@@ -1,0 +1,7 @@
+[
+  {
+    "provider": "example-cloud",
+    "cname_suffixes": ["example-cloud.invalid"],
+    "documentation_url": null
+  }
+]

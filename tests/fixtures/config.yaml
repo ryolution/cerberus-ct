@@ -1,0 +1,17 @@
+brands:
+  - paypal
+  - microsoft
+
+official_domains:
+  - paypal.com
+  - microsoft.com
+
+keywords:
+  - login
+  - support
+  - secure
+  - wallet
+
+allowlist:
+  - paypal.com
+  - microsoft.com

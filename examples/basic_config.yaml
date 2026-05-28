@@ -1,0 +1,49 @@
+brands:
+  - paypal
+  - microsoft
+  - github
+
+official_domains:
+  - paypal.com
+  - microsoft.com
+  - github.com
+
+keywords:
+  - login
+  - verify
+  - secure
+  - account
+  - reset
+  - support
+  - wallet
+  - password
+  - billing
+  - invoice
+  - auth
+  - signin
+
+allowlist:
+  - github.com
+  - microsoft.com
+  - paypal.com
+  - login.microsoftonline.com
+
+outputs:
+  jsonl: true
+  webhook_url: null
+  slack_webhook_url: null
+
+dns:
+  enabled: false
+  takeover: false
+
+
+rules:
+  min_score: 0
+  allowlist_suffixes:
+    - microsoft.com
+    - amazon.com
+    - aws.amazon.com
+    - google.com
+    - github.com
+    - paypal.com

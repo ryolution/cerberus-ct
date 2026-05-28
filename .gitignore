@@ -1,0 +1,11 @@
+/target/
+**/*.rs.bk
+.env
+.env.*
+*.log
+.DS_Store
+.vscode/
+.idea/
+/.cerberus/
+/tmp/
+*.zip

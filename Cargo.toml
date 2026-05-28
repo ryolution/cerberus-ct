@@ -1,0 +1,30 @@
+[workspace]
+members = [
+    "crates/cerberus-core",
+    "crates/cerberus-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+authors = ["Abderaouf Benamirouche <Abderaouf.benamirouche@gmail.com>"]
+repository = "https://github.com/abdou-bnm/cerberus-ct"
+description = "Static CT-native Rust engine for phishing, brand abuse, and DNS exposure detection"
+readme = "README.md"
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+x509-parser = "0.18"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "charset", "gzip"] }
+hickory-resolver = "0.26"
