@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="690" viewBox="0 0 1100 690" role="img" aria-labelledby="title desc">
+  <title id="title">Cerberus CT terminal demo</title>
+  <desc id="desc">A terminal-style demo showing Cerberus CT detecting suspicious domains with multiple explainable signals.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#101820"/>
+      <stop offset="1" stop-color="#16242f"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1100" height="690" rx="0" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <rect x="70" y="58" width="960" height="574" rx="8" fill="#071015" stroke="#2d4654"/>
+    <rect x="70" y="58" width="960" height="46" rx="8" fill="#10212b"/>
+    <circle cx="98" cy="81" r="7" fill="#ff5f56"/>
+    <circle cx="122" cy="81" r="7" fill="#ffbd2e"/>
+    <circle cx="146" cy="81" r="7" fill="#27c93f"/>
+    <text x="550" y="87" text-anchor="middle" fill="#b9d7e6" font-family="Consolas, Menlo, monospace" font-size="15">cerberus-ct demo</text>
+
+    <rect x="98" y="122" width="904" height="70" rx="6" fill="#0b1a22" stroke="#1d3442"/>
+    <text x="118" y="150" fill="#7dd3fc" font-family="Consolas, Menlo, monospace" font-size="15">$ cargo run -q -p cerberus-cli -- scan-domain paypa1-login.com paypal-secure-login.com</text>
+    <text x="138" y="176" fill="#7dd3fc" font-family="Consolas, Menlo, monospace" font-size="15">--config examples/demo_config.yaml --format json --grouped --summary</text>
+
+    <text x="112" y="226" fill="#e5f0f6" font-family="Consolas, Menlo, monospace" font-size="17">{</text>
+    <text x="136" y="254" fill="#facc15" font-family="Consolas, Menlo, monospace" font-size="17">"summary"</text>
+    <text x="230" y="254" fill="#e5f0f6" font-family="Consolas, Menlo, monospace" font-size="17">: { "domain_count": 2, "finding_count": 8, "alert_count": 2 },</text>
+    <text x="136" y="282" fill="#facc15" font-family="Consolas, Menlo, monospace" font-size="17">"alerts"</text>
+    <text x="210" y="282" fill="#e5f0f6" font-family="Consolas, Menlo, monospace" font-size="17">: [</text>
+
+    <text x="160" y="326" fill="#f87171" font-family="Consolas, Menlo, monospace" font-size="19">paypa1-login.com</text>
+    <text x="392" y="326" fill="#facc15" font-family="Consolas, Menlo, monospace" font-size="19">critical</text>
+    <text x="506" y="326" fill="#f8fafc" font-family="Consolas, Menlo, monospace" font-size="19">score 100</text>
+    <text x="160" y="356" fill="#a7f3d0" font-family="Consolas, Menlo, monospace" font-size="16">composition + homoglyph + keyword + typosquat</text>
+    <text x="160" y="384" fill="#cbd5e1" font-family="Consolas, Menlo, monospace" font-size="15">domain token `paypa1` normalizes to protected name `paypal`</text>
+    <text x="160" y="410" fill="#cbd5e1" font-family="Consolas, Menlo, monospace" font-size="15">edit-distance 1 from official domain paypal.com</text>
+
+    <text x="160" y="466" fill="#f87171" font-family="Consolas, Menlo, monospace" font-size="19">paypal-secure-login.com</text>
+    <text x="450" y="466" fill="#facc15" font-family="Consolas, Menlo, monospace" font-size="19">critical</text>
+    <text x="564" y="466" fill="#f8fafc" font-family="Consolas, Menlo, monospace" font-size="19">score 100</text>
+    <text x="160" y="496" fill="#a7f3d0" font-family="Consolas, Menlo, monospace" font-size="16">brand + composition + homoglyph + keyword</text>
+    <text x="160" y="524" fill="#cbd5e1" font-family="Consolas, Menlo, monospace" font-size="15">protected brand combined with security-action terms: secure, login</text>
+
+    <text x="136" y="554" fill="#e5f0f6" font-family="Consolas, Menlo, monospace" font-size="17">]</text>
+    <text x="112" y="578" fill="#e5f0f6" font-family="Consolas, Menlo, monospace" font-size="17">}</text>
+  </g>
+</svg>

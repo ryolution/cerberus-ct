@@ -16,4 +16,24 @@ fn detects_multiple_signals_for_suspicious_domain() {
             .iter()
             .any(|finding| finding.detector == "typosquat")
     );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.detector == "composition")
+    );
+}
+
+#[test]
+fn demo_config_enables_composition_signal() {
+    let config = CerberusConfig::from_yaml_file("../../examples/demo_config.yaml").unwrap();
+    let engine = DetectionEngine::default();
+    let observation = DomainObservation::new("paypal-secure-login.com").unwrap();
+    let findings = engine.detect_observation(&observation, &config).unwrap();
+
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.detector == "composition"),
+        "expected demo config scan to include the composition detector"
+    );
 }

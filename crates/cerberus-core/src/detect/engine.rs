@@ -1,5 +1,6 @@
 use crate::config::CerberusConfig;
 use crate::detect::brand::BrandDetector;
+use crate::detect::composition::CompositionDetector;
 use crate::detect::detector::{DetectionContext, Detector};
 use crate::detect::homoglyph::HomoglyphDetector;
 use crate::detect::keyword::KeywordDetector;
@@ -166,6 +167,7 @@ impl Default for DetectionEngine {
             .with_detector(BrandDetector)
             .with_detector(TyposquatDetector::default())
             .with_detector(HomoglyphDetector)
+            .with_detector(CompositionDetector)
     }
 }
 
@@ -177,7 +179,7 @@ mod tests {
     #[test]
     fn default_engine_has_builtin_detectors() {
         let engine = DetectionEngine::default();
-        assert_eq!(engine.detector_count(), 4);
+        assert_eq!(engine.detector_count(), 5);
     }
 
     #[test]

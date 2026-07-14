@@ -58,6 +58,18 @@ Example:
 xn--example.com
 ```
 
+### Composition detector
+
+Scores suspicious domain construction patterns that are weak alone but meaningful together:
+
+```text
+paypal-secure-login.com
+paypa1-login.com
+login.account-reset.example
+```
+
+The detector emits explainable evidence for combinations such as protected-name plus security-action terms, digit substitutions, excessive hyphenation, deep label nesting, and high-abuse campaign TLDs.
+
 ## DNS enrichment
 
 When enabled, Cerberus adds DNS evidence:
@@ -72,6 +84,12 @@ dns.error
 ## Takeover candidate detection
 
 When enabled, Cerberus checks CNAMEs against known third-party provider fingerprints. It only reports candidate risk conservatively and avoids flagging resolved CNAME targets as takeover candidates.
+
+The fingerprint dataset is checked in under `crates/cerberus-core/data/` and can be refreshed from the upstream community source with:
+
+```powershell
+./scripts/update_takeover_fingerprints.ps1
+```
 
 ## Rule quality controls
 

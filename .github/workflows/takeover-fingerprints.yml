@@ -1,0 +1,18 @@
+name: Takeover Fingerprint Maintenance
+
+on:
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check takeover fingerprint freshness
+        shell: pwsh
+        run: ./scripts/update_takeover_fingerprints.ps1 -Check

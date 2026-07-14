@@ -5,6 +5,8 @@ pub struct TakeoverFingerprint {
     pub provider: String,
     pub cname_suffixes: Vec<String>,
     pub documentation_url: Option<String>,
+    #[serde(default)]
+    pub source_url: Option<String>,
 }
 
 pub fn default_takeover_fingerprints() -> Vec<TakeoverFingerprint> {
@@ -92,6 +94,7 @@ fn fingerprint(provider: &str, suffixes: &[&str], url: &str) -> TakeoverFingerpr
         provider: provider.to_string(),
         cname_suffixes: suffixes.iter().map(|suffix| suffix.to_string()).collect(),
         documentation_url: Some(url.to_string()),
+        source_url: Some("https://github.com/EdOverflow/can-i-take-over-xyz".to_string()),
     }
 }
 
@@ -109,6 +112,7 @@ mod tests {
                 .any(|item| item.provider == "GitHub Pages")
         );
         assert!(fingerprints.iter().any(|item| item.provider == "Heroku"));
-        assert!(fingerprints.len() >= 10);
+        assert!(fingerprints.len() >= 30);
+        assert!(fingerprints.iter().all(|item| item.source_url.is_some()));
     }
 }

@@ -1,72 +1,274 @@
 [
   {
-    "provider": "GitHub Pages",
-    "cname_suffixes": ["github.io"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "Agile CRM",
+    "cname_suffixes": [
+      "agilecrm.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/145",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "Heroku",
-    "cname_suffixes": ["herokuapp.com", "herokudns.com"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "Airee.ru",
+    "cname_suffixes": [
+      "airee.ru"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/104",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "Netlify",
-    "cname_suffixes": ["netlify.app"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "Anima",
+    "cname_suffixes": [
+      "animaapp.io"
+    ],
+    "documentation_url": "https://docs.animaapp.com/v1/launchpad/08-custom-domain.html",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "Vercel",
-    "cname_suffixes": ["vercel-dns.com", "vercel.app"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "AWS/Elastic Beanstalk",
+    "cname_suffixes": [
+      "elasticbeanstalk.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/194",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "Shopify",
-    "cname_suffixes": ["myshopify.com"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "AWS/S3",
+    "cname_suffixes": [
+      "s3.amazonaws.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/36",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "Zendesk",
-    "cname_suffixes": ["zendesk.com"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "Bitbucket",
+    "cname_suffixes": [
+      "bitbucket.io"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/97",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Discourse",
+    "cname_suffixes": [
+      "trydiscourse.com"
+    ],
+    "documentation_url": "https://hackerone.com/reports/264494",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
     "provider": "Fastly",
-    "cname_suffixes": ["fastly.net"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
-  },
-  {
-    "provider": "AWS S3 Website",
     "cname_suffixes": [
-      "s3.amazonaws.com",
-      "s3-website",
-      "s3-website-us-east-1.amazonaws.com",
-      "s3-website-us-west-2.amazonaws.com"
+      "fastly.net"
     ],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "Azure App Service",
+    "provider": "Gemfury",
     "cname_suffixes": [
-      "azurewebsites.net",
-      "cloudapp.net",
-      "trafficmanager.net",
-      "azurefd.net"
+      "furyns.com"
     ],
-    "documentation_url": "https://learn.microsoft.com/en-us/azure/security/fundamentals/subdomain-takeover"
+    "documentation_url": "https://khaledibnalwalid.wordpress.com/2020/06/25/gemfury-subdomain-takeover/",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "ReadMe",
-    "cname_suffixes": ["readme.io"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "Ghost",
+    "cname_suffixes": [
+      "ghost.io"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/89",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
-    "provider": "Canny",
-    "cname_suffixes": ["canny.io"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "provider": "GitHub Pages",
+    "cname_suffixes": [
+      "github.io"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "HatenaBlog",
+    "cname_suffixes": [
+      "hatenablog.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Help Juice",
+    "cname_suffixes": [
+      "helpjuice.com"
+    ],
+    "documentation_url": "https://help.helpjuice.com/en_US/using-your-custom-domain/how-to-set-up-a-custom-domain",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Help Scout",
+    "cname_suffixes": [
+      "helpscoutdocs.com"
+    ],
+    "documentation_url": "https://docs.helpscout.net/article/42-setup-custom-domain",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Helprace",
+    "cname_suffixes": [
+      "helprace.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/115",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Heroku",
+    "cname_suffixes": [
+      "herokuapp.com",
+      "herokudns.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "JetBrains",
+    "cname_suffixes": [
+      "youtrack.cloud"
+    ],
+    "documentation_url": "https://www.jetbrains.com/help/youtrack/incloud/Domain-Settings.html",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   },
   {
     "provider": "LaunchRock",
-    "cname_suffixes": ["launchrock.com"],
-    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+    "cname_suffixes": [
+      "launchrock.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/74",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Microsoft Azure",
+    "cname_suffixes": [
+      "azure-api.net",
+      "azurecontainer.io",
+      "azurecr.io",
+      "azuredatalakestore.net",
+      "azureedge.net",
+      "azurehdinsight.net",
+      "azurewebsites.net",
+      "blob.core.windows.net",
+      "cloudapp.azure.com",
+      "cloudapp.net",
+      "database.windows.net",
+      "redis.cache.windows.net",
+      "search.windows.net",
+      "servicebus.windows.net",
+      "visualstudio.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/35",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Netlify",
+    "cname_suffixes": [
+      "netlify.app"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Ngrok",
+    "cname_suffixes": [
+      "ngrok.io"
+    ],
+    "documentation_url": "https://ngrok.com/docs#http-custom-domains",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Readme.io",
+    "cname_suffixes": [
+      "readme.io"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/41",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Shopify",
+    "cname_suffixes": [
+      "myshopify.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Strikingly",
+    "cname_suffixes": [
+      "s.strikinglydns.com"
+    ],
+    "documentation_url": "https://medium.com/@sherif0x00/takeover-subdomains-pointing-to-strikingly-5e67df80cdfd",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Surge.sh",
+    "cname_suffixes": [
+      "na-west1.surge.sh"
+    ],
+    "documentation_url": "https://surge.sh/help/adding-a-custom-domain",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "SurveySparrow",
+    "cname_suffixes": [
+      "surveysparrow.com"
+    ],
+    "documentation_url": "https://help.surveysparrow.com/custom-domain",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Uberflip",
+    "cname_suffixes": [
+      "read.uberflip.com"
+    ],
+    "documentation_url": "https://help.uberflip.com/hc/en-us/articles/360018786372-Custom-Domain-Set-up-Your-Hub-on-a-Subdomain",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Uptimerobot",
+    "cname_suffixes": [
+      "stats.uptimerobot.com"
+    ],
+    "documentation_url": "https://exploit.linuxsec.org/uptimerobot-com-custom-domain-subdomain-takeover/",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Vercel",
+    "cname_suffixes": [
+      "vercel-dns.com",
+      "vercel.app"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Wordpress",
+    "cname_suffixes": [
+      "wordpress.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/pull/176",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Worksites",
+    "cname_suffixes": [
+      "worksites.net"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz/issues/142",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Zendesk",
+    "cname_suffixes": [
+      "zendesk.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz",
+    "source_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
   }
 ]

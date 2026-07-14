@@ -117,12 +117,28 @@ The pipeline is designed around clear stages.
 | --- | --- |
 | Static CT | Checkpoint fetch, tile path planning, tile fetch, data tile decode |
 | Certificate parsing | PEM and DER parsing, SAN extraction, certificate event creation |
-| Detection | Keyword, brand, typosquat, homoglyph, punycode signals |
+| Detection | Keyword, brand, typosquat, homoglyph, composition, punycode signals |
 | DNS | Optional IP lookup, CNAME collection, DNS error evidence |
 | Exposure | Conservative subdomain takeover candidate detection |
 | Output | Human output, JSON output, grouped alerts, webhook delivery |
 | Monitoring | Persistent watch mode with local JSON state |
 | Rules | Minimum score filtering and suffix allowlisting |
+
+## 30-second demo
+
+![Cerberus CT terminal demo](docs/assets/demo-terminal.svg)
+
+```bash
+cargo run -q -p cerberus-cli -- scan-domain paypa1-login.com paypal-secure-login.com --config examples/demo_config.yaml --format json --grouped --summary
+```
+
+The demo shows grouped critical alerts with composition, homoglyph, keyword, brand, and typosquat evidence. See `docs/demo/` for the condensed sample output and asciinema cast source.
+
+## Releases
+
+Tagged releases build precompiled `cerberus` binaries for Linux x86_64, Windows x86_64, macOS x86_64, and macOS ARM64 through the release workflow. Source builds are still supported with Cargo.
+
+For an existing tag, run the `Release Binaries` workflow manually and pass the tag name.
 
 ## Project structure
 
@@ -130,11 +146,12 @@ The pipeline is designed around clear stages.
 cerberus-ct/
   crates/
     cerberus-core/
+      data/
     cerberus-cli/
   docs/
   examples/
+  scripts/
   tests/
-  data/
 ```
 
 `cerberus-core` contains the reusable library logic.

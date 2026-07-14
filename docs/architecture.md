@@ -39,7 +39,7 @@ config/     project configuration and runtime rule overrides
 ct/         Static CT checkpoint, tile, decoder, and source logic
 cert/       PEM/DER certificate parsing and event conversion
 domain/     domain normalization and domain types
-detect/     keyword, brand, typosquat, and homoglyph detectors
+detect/     keyword, brand, typosquat, homoglyph, and composition detectors
 dns/        DNS enrichment and takeover candidate checks
 output/     JSON/webhook payload models and sinks
 state/      persistent watch state and dedupe

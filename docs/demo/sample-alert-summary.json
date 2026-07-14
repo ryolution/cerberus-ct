@@ -1,0 +1,34 @@
+{
+  "summary": {
+    "domain_count": 2,
+    "finding_count": 8,
+    "alert_count": 2,
+    "message": "2 grouped alerts produced"
+  },
+  "alerts": [
+    {
+      "domain": "paypa1-login.com",
+      "severity": "critical",
+      "score": 100,
+      "detectors": ["composition", "homoglyph", "keyword", "typosquat"],
+      "reasons": [
+        "domain token `paypa1` normalizes to protected name `paypal` after digit substitution",
+        "decoded domain skeleton matches protected name `paypal`",
+        "domain contains suspicious keyword `login`",
+        "domain label candidate `paypa1` is edit-distance 1 from `paypal`"
+      ]
+    },
+    {
+      "domain": "paypal-secure-login.com",
+      "severity": "critical",
+      "score": 100,
+      "detectors": ["brand", "composition", "homoglyph", "keyword"],
+      "reasons": [
+        "domain contains protected brand `paypal`",
+        "domain combines multiple security-action terms: secure, login",
+        "registrable label contains 2 hyphens, a common phishing composition pattern",
+        "domain combines protected name `paypal` with security-action term(s)"
+      ]
+    }
+  ]
+}

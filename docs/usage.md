@@ -6,6 +6,14 @@
 cargo run -p cerberus-cli -- scan-domain paypa1-login.com --config examples/basic_config.yaml --format json --grouped
 ```
 
+## Run the 30-second demo
+
+```powershell
+cargo run -q -p cerberus-cli -- scan-domain paypa1-login.com paypal-secure-login.com --config examples/demo_config.yaml --format json --grouped --summary
+```
+
+See `docs/demo/` for a condensed sample output and asciinema cast source.
+
 ## Scan with DNS enrichment
 
 ```powershell
