@@ -126,13 +126,13 @@ The pipeline is designed around clear stages.
 
 ## 30-second demo
 
-![Cerberus CT terminal demo](docs/assets/demo-terminal.svg)
+![Cerberus CT terminal demo](docs/assets/demo-terminal.gif)
 
 ```bash
 cargo run -q -p cerberus-cli -- scan-domain paypa1-login.com paypal-secure-login.com --config examples/demo_config.yaml --format json --grouped --summary
 ```
 
-The demo shows grouped critical alerts with composition, homoglyph, keyword, brand, and typosquat evidence. See `docs/demo/` for the condensed sample output and asciinema cast source.
+The demo GIF is rendered from a real local CLI run. It shows grouped critical alerts with composition, homoglyph, keyword, brand, and typosquat evidence. See `docs/demo/` for the condensed sample output and asciinema cast source.
 
 ## Releases
 
