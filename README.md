@@ -161,7 +161,7 @@ Cerberus CT can be used with different rule profiles.
 
 Use `basic_config.yaml` for realistic monitoring. It can suppress trusted infrastructure such as Microsoft, Amazon, AWS, Google, GitHub, and PayPal suffixes.
 
-Use `demo_config.yaml` when you want predictable demo output from known CT tiles.
+Use `demo_config.yaml` when you want predictable demo output from known CT tiles. The checked-in configs include trusted Static CT log metadata for Let's Encrypt Sycamore shards used by the examples.
 
 ## Quick start
 
@@ -174,13 +174,13 @@ cargo run -p cerberus-cli -- scan-domain paypa1-login.com --config examples/basi
 Scan one real Static CT data tile with demo rules.
 
 ```bash
-cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h1/ --index 0 --config examples/demo_config.yaml --format json --grouped --summary
+cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h2/ --index 0 --config examples/demo_config.yaml --format json --grouped --summary
 ```
 
 Run one watch cycle from a seeded tile.
 
 ```bash
-cargo run -p cerberus-cli -- watch-ct https://mon.sycamore.ct.letsencrypt.org/2026h1/ --config examples/demo_config.yaml --state .cerberus/demo-state.json --reset-state --seed-index 0 --once --format json --grouped --summary
+cargo run -p cerberus-cli -- watch-ct https://mon.sycamore.ct.letsencrypt.org/2026h2/ --config examples/demo_config.yaml --state .cerberus/demo-state.json --reset-state --seed-index 0 --once --format json --grouped --summary
 ```
 
 Enable DNS enrichment.
@@ -192,19 +192,19 @@ cargo run -p cerberus-cli -- scan-domain paypa1-login.com --config examples/basi
 Enable takeover candidate checks.
 
 ```bash
-cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h1/ --index 0 --config examples/basic_config.yaml --format json --grouped --summary --takeover
+cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h2/ --index 0 --config examples/basic_config.yaml --format json --grouped --summary --takeover
 ```
 
 Suppress low signal findings.
 
 ```bash
-cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h1/ --index 0 --config examples/demo_config.yaml --format json --grouped --summary --min-score 50
+cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h2/ --index 0 --config examples/demo_config.yaml --format json --grouped --summary --min-score 50
 ```
 
 Suppress trusted infrastructure by suffix.
 
 ```bash
-cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h1/ --index 0 --config examples/demo_config.yaml --format json --grouped --summary --allowlist-suffix console.aws.amazon.com
+cargo run -p cerberus-cli -- scan-ct https://mon.sycamore.ct.letsencrypt.org/2026h2/ --index 0 --config examples/demo_config.yaml --format json --grouped --summary --allowlist-suffix console.aws.amazon.com
 ```
 
 ## Webhook test
@@ -235,6 +235,8 @@ $env:CERBERUS_WEBHOOK_URL="http://127.0.0.1:8787/webhook"
 cargo run -p cerberus-cli -- scan-domain paypa1-login.com --config examples/basic_config.yaml --format json --grouped
 Remove-Item Env:CERBERUS_WEBHOOK_URL
 ```
+
+Set `outputs.webhook_signing_secret` to add `X-Cerberus-Timestamp` and `X-Cerberus-Signature` headers. The signature is HMAC-SHA256 over `timestamp.payload`, formatted as `sha256=<hex>`.
 
 ## Example grouped alert
 
@@ -275,7 +277,7 @@ Remove-Item Env:CERBERUS_WEBHOOK_URL
       "index": 3582048,
       "width": 198,
       "path": "tile/data/x003/x582/048.p/198",
-      "url": "https://mon.sycamore.ct.letsencrypt.org/2026h1/tile/data/x003/x582/048.p/198",
+      "url": "https://mon.sycamore.ct.letsencrypt.org/2026h2/tile/data/x003/x582/048.p/198",
       "byte_len": 403733
     },
     "entry_count": 198,
@@ -313,13 +315,25 @@ keywords:
 allowlist: []
 
 outputs:
-  jsonl: true
   webhook_url: null
+  webhook_signing_secret: null
   slack_webhook_url: null
 
 dns:
   enabled: false
   takeover: false
+  concurrency: 16
+
+ct:
+  trusted_logs:
+    - origin: log.sycamore.ct.letsencrypt.org/2026h2
+      base_url: https://mon.sycamore.ct.letsencrypt.org/2026h2/
+      log_id: bP5QGUOoXqkWvFLRM+TcyR7xQRx9JYQg0XOAnhgY6zo=
+      public_key: |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwR1FtiiMbpvxR+sIeiZ5JSCIDIdT
+        APh7OrpdchcrCcyNVDvNUq358pqJx2qdyrOI+EjGxZ7UiPcN3bL3Q99FqA==
+        -----END PUBLIC KEY-----
 
 rules:
   min_score: 0
@@ -331,7 +345,7 @@ rules:
 | Command | Purpose |
 | --- | --- |
 | `scan-domain` | Scan one or more manual domains |
-| `watch` | Run the mock CT source |
+| `demo-watch` | Run the mock CT source |
 | `validate-config` | Validate a YAML config file |
 | `fetch-checkpoint` | Fetch and parse a Static CT checkpoint |
 | `fetch-tile` | Fetch a Static CT tile |
@@ -374,6 +388,7 @@ Always validate takeover findings manually before action.
 | DNS dependency | DNS output can change over time |
 | Provider fingerprints | Takeover rules need ongoing maintenance |
 | CT freshness | Latest tiles may return no matching alerts |
+| Webhook delivery | Watch mode uses a durable local outbox with at-least-once delivery, so receivers should dedupe |
 | Live services | Resolved third party CNAMEs are treated as enrichment, not takeover evidence |
 | Demo output | Demo commands should use `examples/demo_config.yaml` |
 

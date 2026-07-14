@@ -1,8 +1,9 @@
 use anyhow::{Result, anyhow};
 use cerberus_core::{
-    DetectionEngine, DomainAlert, FileWatchStateStore, Finding, StaticCtClient,
-    StaticCtTileMetadata, StaticCtTilePath, WatchCtState, decode_static_ct_data_tile,
-    decoded_entries_to_certificate_events, group_findings_by_domain,
+    DetectionEngine, DomainAlert, FileWatchStateStore, Finding, OutboxEvent, StaticCtClient,
+    StaticCtTileMetadata, StaticCtTilePath, WatchCtState, WebhookPayload,
+    decode_static_ct_data_tile, decoded_entries_to_certificate_events, group_findings_by_domain,
+    verify_entries_against_level_zero_hashes,
 };
 use serde::Serialize;
 use tokio::time::{Duration, sleep};
@@ -67,11 +68,24 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
         return Err(anyhow!("--max-tiles must be greater than zero"));
     }
 
+    if args.interval_ms == 0 {
+        return Err(anyhow!("--interval-ms must be greater than zero"));
+    }
+
     let mut config = load_config(args.config.as_deref())?;
     apply_rule_overrides(&mut config, args.min_score, &args.allowlist_suffixes);
+    let webhook_url = args
+        .webhook_url
+        .as_deref()
+        .or(config.outputs.webhook_url.as_deref());
+    let webhook_signing_secret = config.outputs.webhook_signing_secret.as_deref();
+    let slack_webhook_url = config.outputs.slack_webhook_url.as_deref();
 
     let engine = DetectionEngine::default();
-    let client = StaticCtClient::new(args.url.clone());
+    let trusted_log = config
+        .trusted_log_for_url(&args.url)?
+        .ok_or_else(|| anyhow!("watch-ct requires a matching ct.trusted_logs entry"))?;
+    let client = StaticCtClient::with_trusted_log(trusted_log)?;
     let store = FileWatchStateStore::new(args.state.clone());
     let base_url = client.monitoring_base_url();
     let mut first_iteration = true;
@@ -79,7 +93,25 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
     loop {
         let reset_state = args.reset_state && first_iteration;
         let mut state = load_state(&store, &base_url, reset_state)?;
+        deliver_pending_outbox(
+            &store,
+            &mut state,
+            webhook_url,
+            webhook_signing_secret,
+            slack_webhook_url,
+        )
+        .await?;
         let checkpoint = client.fetch_checkpoint().await?;
+        client
+            .verify_checkpoint_consistency(
+                state.last_checkpoint_size,
+                state.last_checkpoint_root_hash.as_deref(),
+                &checkpoint,
+            )
+            .await?;
+        client.verify_checkpoint_tree(&checkpoint).await?;
+        let checkpoint_root_hex = checkpoint.root_hash_hex()?;
+        validate_checkpoint_progress(&state, &checkpoint_root_hex, checkpoint.size)?;
         let latest_path = cerberus_core::latest_data_tile_for_size(checkpoint.size)?
             .ok_or_else(|| anyhow!("checkpoint tree size does not contain a data tile"))?;
         let latest_entry_index = checkpoint.size.saturating_sub(1);
@@ -89,6 +121,7 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
             .is_some_and(|last| last >= latest_entry_index)
         {
             state.last_checkpoint_size = checkpoint.size;
+            state.last_checkpoint_root_hash = Some(checkpoint_root_hex);
             store.save(&state)?;
 
             let summary = WatchCtSummary {
@@ -137,6 +170,7 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
 
         if start_tile_index > end_tile_index {
             state.last_checkpoint_size = checkpoint.size;
+            state.last_checkpoint_root_hash = Some(checkpoint_root_hex);
             store.save(&state)?;
 
             let summary = WatchCtSummary {
@@ -193,8 +227,16 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
             let tile = client.fetch_tile(path).await?;
             let metadata = tile.metadata()?;
             let entries = decode_static_ct_data_tile(&tile)?;
+            let level_zero_hashes = client
+                .fetch_level_zero_hashes_for_data_tile(&tile.path, checkpoint.size)
+                .await?;
+            verify_entries_against_level_zero_hashes(&entries, &level_zero_hashes)?;
+            let highest_decoded_entry_index = entries
+                .last()
+                .map(|entry| entry.index)
+                .ok_or_else(|| anyhow!("decoded Static CT tile contained no entries"))?;
             let decoded = decoded_entries_to_certificate_events(&entries, base_url.clone());
-            let tile_end_entry_index = tile_end_entry_index(tile_index, width);
+            let tile_end_entry_index = highest_decoded_entry_index;
             let tile_start_entry_index = tile_index.saturating_mul(256);
             let first_index_for_tile = first_entry_to_scan.max(tile_start_entry_index);
 
@@ -202,10 +244,12 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
             parse_error_count += decoded.parse_error_count;
             scanned_tiles.push(metadata);
 
-            if first_index_for_tile <= tile_end_entry_index {
-                scanned_entry_count +=
-                    (tile_end_entry_index - first_index_for_tile + 1).min(256) as usize;
-            }
+            scanned_entry_count += entries
+                .iter()
+                .filter(|entry| entry.index >= first_index_for_tile)
+                .count();
+
+            state.record_parse_errors(&base_url, decoded.parse_errors.clone());
 
             for event in decoded.events {
                 if event.index.is_some_and(|index| index < first_entry_to_scan) {
@@ -222,7 +266,12 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
                 findings.extend(engine.detect_event(event, &config)?);
             }
 
-            state.update_position(checkpoint.size, tile_index, tile_end_entry_index);
+            state.update_position(
+                checkpoint.size,
+                checkpoint_root_hex.clone(),
+                tile_index,
+                tile_end_entry_index,
+            );
         }
 
         tracing::info!(
@@ -245,9 +294,16 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
         if args.grouped {
             let raw_alerts = group_findings_by_domain(findings);
             let raw_alert_count = raw_alerts.len();
-            let mut alerts = raw_alerts;
-
-            alerts.retain(|alert| !state.has_alerted(&alert.domain));
+            let alerts = raw_alerts
+                .into_iter()
+                .filter(|alert| {
+                    alert
+                        .findings
+                        .iter()
+                        .any(|finding| !state.has_alerted_finding(finding))
+                })
+                .filter(|alert| config.should_keep_alert(alert.score))
+                .collect::<Vec<_>>();
 
             let deduped_count = raw_alert_count.saturating_sub(alerts.len());
 
@@ -270,13 +326,25 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
                 scanned_tiles,
             };
 
-            webhook::send_alerts(args.webhook_url.as_deref(), &alerts).await?;
-
+            enqueue_outbox_payloads(
+                &mut state,
+                webhook_url,
+                slack_webhook_url,
+                WebhookPayload::alerts(alerts.clone()),
+            )?;
             for alert in &alerts {
-                state.remember_alerted_domain(alert.domain.clone());
+                state.remember_alerted_findings(&alert.findings);
             }
 
             store.save(&state)?;
+            deliver_pending_outbox(
+                &store,
+                &mut state,
+                webhook_url,
+                webhook_signing_secret,
+                slack_webhook_url,
+            )
+            .await?;
 
             if args.once || args.summary || !alerts.is_empty() {
                 output_alert_report(summary, alerts, args.format, args.summary || args.once)?;
@@ -286,11 +354,10 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
             let mut filtered_findings = Vec::new();
 
             for finding in findings {
-                if state.has_alerted(&finding.domain) {
+                if state.has_alerted_finding(&finding) {
                     continue;
                 }
 
-                state.remember_alerted_domain(finding.domain.clone());
                 filtered_findings.push(finding);
             }
 
@@ -315,9 +382,22 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
                 scanned_tiles,
             };
 
-            webhook::send_findings(args.webhook_url.as_deref(), &filtered_findings).await?;
-
+            enqueue_outbox_payloads(
+                &mut state,
+                webhook_url,
+                slack_webhook_url,
+                WebhookPayload::findings(filtered_findings.clone()),
+            )?;
+            state.remember_alerted_findings(&filtered_findings);
             store.save(&state)?;
+            deliver_pending_outbox(
+                &store,
+                &mut state,
+                webhook_url,
+                webhook_signing_secret,
+                slack_webhook_url,
+            )
+            .await?;
 
             if args.once || args.summary || !filtered_findings.is_empty() {
                 output_finding_report(
@@ -340,6 +420,84 @@ pub async fn run(args: WatchCtArgs) -> Result<()> {
     Ok(())
 }
 
+fn enqueue_outbox_payloads(
+    state: &mut WatchCtState,
+    webhook_url: Option<&str>,
+    slack_webhook_url: Option<&str>,
+    payload: WebhookPayload,
+) -> Result<()> {
+    if payload.is_empty() {
+        return Ok(());
+    }
+
+    let payload = serde_json::to_value(payload)?;
+    if webhook_url.is_some() {
+        state.enqueue_outbox("webhook", payload.clone())?;
+    }
+    if slack_webhook_url.is_some() {
+        state.enqueue_outbox("slack", payload)?;
+    }
+
+    Ok(())
+}
+
+async fn deliver_pending_outbox(
+    store: &FileWatchStateStore,
+    state: &mut WatchCtState,
+    webhook_url: Option<&str>,
+    webhook_signing_secret: Option<&str>,
+    slack_webhook_url: Option<&str>,
+) -> Result<()> {
+    let pending = state.pending_outbox();
+
+    for event in pending {
+        if let Err(error) = deliver_outbox_event(
+            &event,
+            webhook_url,
+            webhook_signing_secret,
+            slack_webhook_url,
+        )
+        .await
+        {
+            state.mark_outbox_attempt_failed(&event.id, error.to_string());
+            store.save(state)?;
+            return Err(error);
+        }
+
+        state.mark_outbox_delivered(&event.id);
+        store.save(state)?;
+    }
+
+    Ok(())
+}
+
+async fn deliver_outbox_event(
+    event: &OutboxEvent,
+    webhook_url: Option<&str>,
+    webhook_signing_secret: Option<&str>,
+    slack_webhook_url: Option<&str>,
+) -> Result<()> {
+    let payload: WebhookPayload = serde_json::from_value(event.payload.clone())?;
+
+    match event.sink.as_str() {
+        "webhook" => {
+            if webhook_url.is_none() {
+                return Err(anyhow!(
+                    "pending webhook outbox event has no configured URL"
+                ));
+            }
+            webhook::send_payload(webhook_url, webhook_signing_secret, &payload).await
+        }
+        "slack" => {
+            if slack_webhook_url.is_none() {
+                return Err(anyhow!("pending Slack outbox event has no configured URL"));
+            }
+            webhook::send_payload_to_slack(slack_webhook_url, &payload).await
+        }
+        sink => Err(anyhow!("unknown outbox sink `{sink}`")),
+    }
+}
+
 fn load_state(
     store: &FileWatchStateStore,
     base_url: &str,
@@ -357,12 +515,20 @@ fn load_state(
     })
 }
 
-fn tile_end_entry_index(tile_index: u64, width: Option<u8>) -> u64 {
-    let width = width.map(u64::from).unwrap_or(256);
+fn validate_checkpoint_progress(
+    state: &WatchCtState,
+    _checkpoint_root_hash: &str,
+    checkpoint_size: u64,
+) -> Result<()> {
+    if checkpoint_size < state.last_checkpoint_size {
+        return Err(anyhow!(
+            "checkpoint rollback detected: stored size {} is newer than fetched size {}",
+            state.last_checkpoint_size,
+            checkpoint_size
+        ));
+    }
 
-    tile_index
-        .saturating_mul(256)
-        .saturating_add(width.saturating_sub(1))
+    Ok(())
 }
 
 fn output_empty_report(
@@ -400,7 +566,7 @@ fn output_alert_report(
     summary: WatchCtSummary,
     alerts: Vec<DomainAlert>,
     format: OutputFormat,
-    report_json: bool,
+    _report_json: bool,
 ) -> Result<()> {
     match format {
         OutputFormat::Human => {
@@ -408,14 +574,10 @@ fn output_alert_report(
             display::print_alerts_human(&alerts);
         }
         OutputFormat::Json => {
-            if report_json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&WatchCtAlertReport { summary, alerts })?
-                );
-            } else {
-                println!("{}", serde_json::to_string_pretty(&alerts)?);
-            }
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&WatchCtAlertReport { summary, alerts })?
+            );
         }
     }
 
@@ -426,7 +588,7 @@ fn output_finding_report(
     summary: WatchCtSummary,
     findings: Vec<Finding>,
     format: OutputFormat,
-    report_json: bool,
+    _report_json: bool,
 ) -> Result<()> {
     match format {
         OutputFormat::Human => {
@@ -434,14 +596,10 @@ fn output_finding_report(
             display::print_findings_human(&findings);
         }
         OutputFormat::Json => {
-            if report_json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&WatchCtFindingReport { summary, findings })?
-                );
-            } else {
-                println!("{}", serde_json::to_string_pretty(&findings)?);
-            }
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&WatchCtFindingReport { summary, findings })?
+            );
         }
     }
 

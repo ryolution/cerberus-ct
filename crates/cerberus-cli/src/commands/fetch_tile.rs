@@ -7,6 +7,8 @@ use cerberus_core::{
 use crate::cli::{FetchTileArgs, OutputFormat, TileKindArg};
 use crate::display;
 
+const UNVERIFIED_DIAGNOSTIC: &str = "unverified_diagnostic";
+
 pub async fn run(args: FetchTileArgs) -> Result<()> {
     tracing::info!(
         url = %args.url,
@@ -30,13 +32,22 @@ pub async fn run(args: FetchTileArgs) -> Result<()> {
         return Err(anyhow!("--level can only be used with --kind tree"));
     }
 
-    let client = StaticCtClient::new(args.url);
+    let client = StaticCtClient::try_new(args.url)?;
     let tile = client.fetch_tile(path).await?;
     let metadata = tile.metadata()?;
 
     match args.format {
-        OutputFormat::Human => display::print_tile_human(&metadata),
-        OutputFormat::Json => display::print_tile_json(&metadata)?,
+        OutputFormat::Human => {
+            println!("verification: {UNVERIFIED_DIAGNOSTIC}");
+            display::print_tile_human(&metadata);
+        }
+        OutputFormat::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "verification": UNVERIFIED_DIAGNOSTIC,
+                "tile": metadata,
+            }))?
+        ),
     }
 
     Ok(())

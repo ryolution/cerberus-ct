@@ -53,21 +53,11 @@ pub fn print_alerts_human(alerts: &[DomainAlert]) {
     }
 }
 
-pub fn print_checkpoint_json(checkpoint: &StaticCtCheckpoint) -> Result<()> {
-    println!("{}", serde_json::to_string_pretty(checkpoint)?);
-    Ok(())
-}
-
 pub fn print_checkpoint_human(checkpoint: &StaticCtCheckpoint) {
     println!("origin: {}", checkpoint.origin);
     println!("size: {}", checkpoint.size);
     println!("root_hash: {}", checkpoint.root_hash);
     println!("signatures: {}", checkpoint.signatures.len());
-}
-
-pub fn print_tile_json(tile: &StaticCtTileMetadata) -> Result<()> {
-    println!("{}", serde_json::to_string_pretty(tile)?);
-    Ok(())
 }
 
 pub fn print_tile_human(tile: &StaticCtTileMetadata) {

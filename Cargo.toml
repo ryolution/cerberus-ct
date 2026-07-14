@@ -6,7 +6,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 license = "MIT"
 authors = ["Abderaouf Benamirouche <Abderaouf.benamirouche@gmail.com>"]
@@ -20,11 +20,24 @@ async-trait = "0.1"
 clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.9"
-thiserror = "1"
+thiserror = "2"
+time = { version = "0.3", features = ["formatting"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+unicode-security = "0.1"
 x509-parser = "0.18"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "charset", "gzip"] }
 hickory-resolver = "0.26"
+base64 = "0.22"
+ed25519-dalek = "2"
+fs2 = "0.4"
+futures = "0.3"
+hex = "0.4"
+idna = "1"
+psl = "2"
+ring = "0.17"
+sha2 = "0.10"
+url = "2"
+yaml_serde = "0.10"
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem"] }

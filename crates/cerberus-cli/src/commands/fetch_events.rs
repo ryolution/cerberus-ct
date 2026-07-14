@@ -10,6 +10,7 @@ use crate::cli::{FetchEventsArgs, OutputFormat};
 
 #[derive(Debug, Serialize)]
 struct FetchEventsReport {
+    verification: &'static str,
     tile: StaticCtTileMetadata,
     entry_count: usize,
     event_count: usize,
@@ -19,6 +20,8 @@ struct FetchEventsReport {
     events: Vec<CertificateEvent>,
     parse_errors: Vec<StaticCtEntryParseError>,
 }
+
+const UNVERIFIED_DIAGNOSTIC: &str = "unverified_diagnostic";
 
 pub async fn run(args: FetchEventsArgs) -> Result<()> {
     tracing::info!(
@@ -32,7 +35,7 @@ pub async fn run(args: FetchEventsArgs) -> Result<()> {
     );
 
     let path = build_data_tile_path(&args)?;
-    let client = StaticCtClient::new(args.url);
+    let client = StaticCtClient::try_new(args.url)?;
     let source_log = client.monitoring_base_url();
     let tile = client.fetch_tile(path).await?;
     let metadata = tile.metadata()?;
@@ -47,6 +50,7 @@ pub async fn run(args: FetchEventsArgs) -> Result<()> {
         decoded.parse_errors.into_iter().take(args.limit).collect();
 
     let report = FetchEventsReport {
+        verification: UNVERIFIED_DIAGNOSTIC,
         tile: metadata,
         entry_count,
         event_count,
@@ -85,6 +89,7 @@ fn build_data_tile_path(args: &FetchEventsArgs) -> Result<StaticCtTilePath> {
 }
 
 fn print_report_human(report: &FetchEventsReport) {
+    println!("verification: {}", report.verification);
     println!("tile: {}", report.tile.path);
     println!("url: {}", report.tile.url);
     println!("byte_len: {}", report.tile.byte_len);

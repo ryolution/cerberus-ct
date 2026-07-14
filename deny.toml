@@ -1,0 +1,29 @@
+[advisories]
+yanked = "deny"
+ignore = []
+
+[licenses]
+allow = [
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "deny"
+wildcards = "allow"
+skip = [
+  { crate = "cpufeatures@0.2.17", reason = "ed25519-dalek and sha2 still use the 0.2 line while hickory's rand stack uses 0.3" },
+  { crate = "getrandom@0.2.17", reason = "ring still uses getrandom 0.2 while hickory's rand stack uses getrandom 0.4" },
+  { crate = "windows-sys@0.52.0", reason = "ring still uses the 0.52 Windows bindings while current dependencies use 0.61" },
+  { crate = "wit-bindgen@0.51.0", reason = "getrandom's WASI support currently pulls both wasip2 and wasip3 binding versions" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

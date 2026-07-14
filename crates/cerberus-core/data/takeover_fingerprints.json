@@ -1,0 +1,72 @@
+[
+  {
+    "provider": "GitHub Pages",
+    "cname_suffixes": ["github.io"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Heroku",
+    "cname_suffixes": ["herokuapp.com", "herokudns.com"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Netlify",
+    "cname_suffixes": ["netlify.app"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Vercel",
+    "cname_suffixes": ["vercel-dns.com", "vercel.app"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Shopify",
+    "cname_suffixes": ["myshopify.com"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Zendesk",
+    "cname_suffixes": ["zendesk.com"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Fastly",
+    "cname_suffixes": ["fastly.net"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "AWS S3 Website",
+    "cname_suffixes": [
+      "s3.amazonaws.com",
+      "s3-website",
+      "s3-website-us-east-1.amazonaws.com",
+      "s3-website-us-west-2.amazonaws.com"
+    ],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Azure App Service",
+    "cname_suffixes": [
+      "azurewebsites.net",
+      "cloudapp.net",
+      "trafficmanager.net",
+      "azurefd.net"
+    ],
+    "documentation_url": "https://learn.microsoft.com/en-us/azure/security/fundamentals/subdomain-takeover"
+  },
+  {
+    "provider": "ReadMe",
+    "cname_suffixes": ["readme.io"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "Canny",
+    "cname_suffixes": ["canny.io"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  },
+  {
+    "provider": "LaunchRock",
+    "cname_suffixes": ["launchrock.com"],
+    "documentation_url": "https://github.com/EdOverflow/can-i-take-over-xyz"
+  }
+]

@@ -18,11 +18,15 @@ impl Detector for BrandDetector {
         ctx: &DetectionContext<'_>,
     ) -> Result<Vec<Finding>> {
         let domain = observation.domain.as_str();
+        let tokens = domain_tokens(domain);
         let mut matches = Vec::new();
 
         for brand in &ctx.config().brands {
             let brand = brand.trim().to_ascii_lowercase();
-            if !brand.is_empty() && domain.contains(&brand) {
+            if !brand.is_empty()
+                && !matches.contains(&brand)
+                && tokens.iter().any(|token| token == &brand)
+            {
                 matches.push(brand);
             }
         }
@@ -31,9 +35,9 @@ impl Detector for BrandDetector {
             return Ok(Vec::new());
         }
 
-        let score = 50u8
-            .saturating_add((matches.len() as u8).saturating_sub(1) * 10)
-            .min(80);
+        let score = 50u16
+            .saturating_add(matches.len().saturating_sub(1) as u16 * 10)
+            .min(80) as u8;
         let mut finding = Finding::new(domain, self.name(), severity_from_score(score), score);
 
         for brand in matches {
@@ -43,6 +47,26 @@ impl Detector for BrandDetector {
         }
 
         Ok(vec![finding])
+    }
+}
+
+fn domain_tokens(domain: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+
+    for label in domain.split('.') {
+        push_token(label, &mut tokens);
+        for token in label.split(|ch: char| !ch.is_ascii_alphanumeric()) {
+            push_token(token, &mut tokens);
+        }
+    }
+
+    tokens
+}
+
+fn push_token(token: &str, tokens: &mut Vec<String>) {
+    let token = token.trim().to_ascii_lowercase();
+    if !token.is_empty() && !tokens.contains(&token) {
+        tokens.push(token);
     }
 }
 

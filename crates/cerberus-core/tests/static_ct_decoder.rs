@@ -1,6 +1,6 @@
 use cerberus_core::{
-    StaticCtDecodedEntryKind, decode_static_ct_data_tile_bytes,
-    decoded_entries_to_certificate_events,
+    StaticCtDecodedEntryKind, StaticCtTile, StaticCtTilePath, decode_static_ct_data_tile,
+    decode_static_ct_data_tile_bytes, decoded_entries_to_certificate_events,
 };
 
 const DER_CERT: &[u8] = include_bytes!("fixtures/san_cert.der");
@@ -41,6 +41,42 @@ fn rejects_truncated_static_ct_data_tile() {
     tile.truncate(16);
 
     assert!(decode_static_ct_data_tile_bytes(&tile, 0).is_err());
+}
+
+#[test]
+fn rejects_undersized_partial_data_tile() {
+    let tile = StaticCtTile {
+        path: StaticCtTilePath::data(0, Some(2)).unwrap(),
+        url: "https://example.com/tile/data/000.p/2".to_string(),
+        bytes: build_x509_leaf(DER_CERT, 1700000000000),
+    };
+
+    assert!(decode_static_ct_data_tile(&tile).is_err());
+}
+
+#[test]
+fn accepts_exact_partial_data_tile_width() {
+    let mut bytes = build_x509_leaf(DER_CERT, 1700000000000);
+    bytes.extend_from_slice(&build_x509_leaf(DER_CERT, 1700000000001));
+    let tile = StaticCtTile {
+        path: StaticCtTilePath::data(0, Some(2)).unwrap(),
+        url: "https://example.com/tile/data/000.p/2".to_string(),
+        bytes,
+    };
+
+    let entries = decode_static_ct_data_tile(&tile).unwrap();
+    assert_eq!(entries.len(), 2);
+}
+
+#[test]
+fn rejects_undersized_full_data_tile() {
+    let tile = StaticCtTile {
+        path: StaticCtTilePath::data(0, None).unwrap(),
+        url: "https://example.com/tile/data/000".to_string(),
+        bytes: build_x509_leaf(DER_CERT, 1700000000000),
+    };
+
+    assert!(decode_static_ct_data_tile(&tile).is_err());
 }
 
 fn build_x509_leaf(cert: &[u8], timestamp: u64) -> Vec<u8> {

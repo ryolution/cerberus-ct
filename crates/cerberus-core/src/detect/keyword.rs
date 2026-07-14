@@ -18,6 +18,7 @@ impl Detector for KeywordDetector {
         ctx: &DetectionContext<'_>,
     ) -> Result<Vec<Finding>> {
         let domain = observation.domain.as_str();
+        let tokens = domain_tokens(domain);
 
         let matched_keywords: Vec<String> = ctx
             .config()
@@ -25,8 +26,13 @@ impl Detector for KeywordDetector {
             .iter()
             .map(|keyword| keyword.trim().to_ascii_lowercase())
             .filter(|keyword| !keyword.is_empty())
-            .filter(|keyword| domain.contains(keyword))
-            .collect();
+            .filter(|keyword| tokens.iter().any(|token| token == keyword))
+            .fold(Vec::new(), |mut keywords, keyword| {
+                if !keywords.contains(&keyword) {
+                    keywords.push(keyword);
+                }
+                keywords
+            });
 
         if matched_keywords.is_empty() {
             return Ok(Vec::new());
@@ -46,9 +52,29 @@ impl Detector for KeywordDetector {
 }
 
 fn calculate_keyword_score(match_count: usize) -> u8 {
-    let base_score = 30;
-    let extra_score = match_count.saturating_sub(1) as u8 * 10;
-    base_score + extra_score.min(30)
+    let base_score = 30u16;
+    let extra_score = match_count.saturating_sub(1) as u16 * 10;
+    base_score.saturating_add(extra_score.min(30)).min(100) as u8
+}
+
+fn domain_tokens(domain: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+
+    for label in domain.split('.') {
+        push_token(label, &mut tokens);
+        for token in label.split(|ch: char| !ch.is_ascii_alphanumeric()) {
+            push_token(token, &mut tokens);
+        }
+    }
+
+    tokens
+}
+
+fn push_token(token: &str, tokens: &mut Vec<String>) {
+    let token = token.trim().to_ascii_lowercase();
+    if !token.is_empty() && !tokens.contains(&token) {
+        tokens.push(token);
+    }
 }
 
 #[cfg(test)]

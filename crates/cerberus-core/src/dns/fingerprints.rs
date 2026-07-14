@@ -8,6 +8,11 @@ pub struct TakeoverFingerprint {
 }
 
 pub fn default_takeover_fingerprints() -> Vec<TakeoverFingerprint> {
+    serde_json::from_str(include_str!("../../data/takeover_fingerprints.json"))
+        .unwrap_or_else(|_| builtin_takeover_fingerprints())
+}
+
+fn builtin_takeover_fingerprints() -> Vec<TakeoverFingerprint> {
     vec![
         fingerprint(
             "GitHub Pages",
@@ -87,5 +92,23 @@ fn fingerprint(provider: &str, suffixes: &[&str], url: &str) -> TakeoverFingerpr
         provider: provider.to_string(),
         cname_suffixes: suffixes.iter().map(|suffix| suffix.to_string()).collect(),
         documentation_url: Some(url.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::default_takeover_fingerprints;
+
+    #[test]
+    fn loads_checked_in_takeover_fingerprints() {
+        let fingerprints = default_takeover_fingerprints();
+
+        assert!(
+            fingerprints
+                .iter()
+                .any(|item| item.provider == "GitHub Pages")
+        );
+        assert!(fingerprints.iter().any(|item| item.provider == "Heroku"));
+        assert!(fingerprints.len() >= 10);
     }
 }

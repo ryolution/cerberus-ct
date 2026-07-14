@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use cerberus_core::{
-    CerberusError, DnsEnrichment, DnsResolver, Result,
+    CerberusError, DnsEnrichment, DnsResolver, ResolutionStatus, Result,
     enrich_findings_with_dns_and_takeover_with_resolver,
 };
 use std::collections::BTreeMap;
@@ -27,6 +27,7 @@ async fn detects_takeover_candidate_from_observed_domain() {
             DnsEnrichment {
                 domain: "docs.example.com".to_string(),
                 resolved: false,
+                status: ResolutionStatus::NxDomain,
                 ips: Vec::new(),
                 cname_chain: vec!["abandoned-project.herokuapp.com".to_string()],
                 errors: Vec::new(),

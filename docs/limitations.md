@@ -26,6 +26,6 @@ Cerberus CT is an early-warning system. It does not prove abuse by itself.
 
 ## Operational limitations
 
-- Webhook output is simple and does not yet include a durable retry queue.
+- Watch webhook output uses a local durable outbox with at-least-once delivery. Receivers should deduplicate repeated payloads.
 - Watch mode uses a local JSON state file, not a shared database.
 - The project is not packaged as a Windows service or systemd unit yet.

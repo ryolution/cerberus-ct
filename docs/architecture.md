@@ -54,7 +54,7 @@ Main commands:
 
 ```text
 scan-domain       scan one or more domains directly
-watch             run mock CT watch mode
+demo-watch        run mock CT watch mode
 validate-config   validate YAML config
 fetch-checkpoint  fetch a Static CT checkpoint
 fetch-tile        fetch a Static CT tile
@@ -70,9 +70,12 @@ watch-ct          persistent Static CT monitoring
 ```text
 log URL
 last checkpoint size
+last checkpoint root hash
 last scanned tile index
 last scanned entry index
-alerted domains
+alerted finding identities
+dead-letter parse errors
+pending outbox events
 ```
 
-This prevents repeat scanning and duplicate alerts in normal monitoring mode.
+This prevents repeat scanning and duplicate alerts in normal monitoring mode, and lets webhook delivery resume after transient failures.

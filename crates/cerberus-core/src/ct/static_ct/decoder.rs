@@ -1,9 +1,16 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 use crate::cert::parser::parse_der_certificate_event;
+use crate::ct::static_ct::merkle::{MerkleHash, leaf_hash};
 use crate::ct::static_ct::tiles::{StaticCtTile, StaticCtTileKind};
 use crate::error::{CerberusError, Result};
 use crate::event::CertificateEvent;
+
+pub const STATIC_CT_DATA_TILE_WIDTH: usize = 256;
+pub const STATIC_CT_HASH_TILE_WIDTH: usize = 256;
+pub const STATIC_CT_HASH_LEN: usize = 32;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -17,6 +24,7 @@ pub struct StaticCtDecodedEntry {
     pub index: u64,
     pub timestamp_millis: u64,
     pub kind: StaticCtDecodedEntryKind,
+    pub merkle_leaf_hash: String,
     #[serde(skip_serializing)]
     pub certificate_der: Vec<u8>,
     pub certificate_chain_fingerprints: Vec<String>,
@@ -51,17 +59,90 @@ pub fn decode_static_ct_data_tile(tile: &StaticCtTile) -> Result<Vec<StaticCtDec
     let first_index = tile.path.index.saturating_mul(256);
     let entries = decode_static_ct_data_tile_bytes(&tile.bytes, first_index)?;
 
-    if let Some(width) = tile.path.width {
-        if entries.len() > width as usize {
+    let expected_entry_count = tile
+        .path
+        .width
+        .map(usize::from)
+        .unwrap_or(STATIC_CT_DATA_TILE_WIDTH);
+
+    if entries.len() != expected_entry_count {
+        return Err(CerberusError::CtSource(format!(
+            "Static CT data tile decoded {} entries but path requires {}",
+            entries.len(),
+            expected_entry_count
+        )));
+    }
+
+    Ok(entries)
+}
+
+pub fn decode_static_ct_hash_tile(tile: &StaticCtTile) -> Result<Vec<MerkleHash>> {
+    match &tile.path.kind {
+        StaticCtTileKind::Tree { .. } => {}
+        StaticCtTileKind::Data => {
+            return Err(CerberusError::CtSource(
+                "Static CT hash decoder only accepts tree tiles".to_string(),
+            ));
+        }
+    }
+
+    if tile.bytes.len() % STATIC_CT_HASH_LEN != 0 {
+        return Err(CerberusError::CtSource(format!(
+            "Static CT tree tile byte length must be a multiple of {STATIC_CT_HASH_LEN}, got {}",
+            tile.bytes.len()
+        )));
+    }
+
+    let hashes = tile
+        .bytes
+        .chunks_exact(STATIC_CT_HASH_LEN)
+        .map(|chunk| chunk.try_into().expect("chunk size is fixed"))
+        .collect::<Vec<MerkleHash>>();
+    let expected_hash_count = tile
+        .path
+        .width
+        .map(usize::from)
+        .unwrap_or(STATIC_CT_HASH_TILE_WIDTH);
+
+    if hashes.len() != expected_hash_count {
+        return Err(CerberusError::CtSource(format!(
+            "Static CT tree tile decoded {} hashes but path requires {}",
+            hashes.len(),
+            expected_hash_count
+        )));
+    }
+
+    Ok(hashes)
+}
+
+pub fn verify_entries_against_level_zero_hashes(
+    entries: &[StaticCtDecodedEntry],
+    level_zero_hashes: &[MerkleHash],
+) -> Result<()> {
+    if entries.len() != level_zero_hashes.len() {
+        return Err(CerberusError::CtSource(format!(
+            "Static CT data tile has {} entries but level-0 tile has {} hashes",
+            entries.len(),
+            level_zero_hashes.len()
+        )));
+    }
+
+    for (entry, expected_hash) in entries.iter().zip(level_zero_hashes) {
+        let actual_hash = hex::decode(&entry.merkle_leaf_hash).map_err(|error| {
+            CerberusError::CtSource(format!(
+                "entry {} has invalid Merkle leaf hash encoding: {error}",
+                entry.index
+            ))
+        })?;
+        if actual_hash.as_slice() != expected_hash {
             return Err(CerberusError::CtSource(format!(
-                "Static CT data tile decoded {} entries but partial width is {}",
-                entries.len(),
-                width
+                "Static CT data entry {} does not match level-0 tree hash",
+                entry.index
             )));
         }
     }
 
-    Ok(entries)
+    Ok(())
 }
 
 pub fn decode_static_ct_data_tile_bytes(
@@ -93,7 +174,7 @@ pub fn decoded_entries_to_certificate_events(
             &entry.certificate_der,
             source_log.clone(),
             Some(entry.index),
-            entry.timestamp_millis.to_string(),
+            timestamp_millis_to_rfc3339(entry.timestamp_millis),
         ) {
             Ok(event) => events.push(event),
             Err(error) => parse_errors.push(StaticCtEntryParseError {
@@ -113,12 +194,13 @@ pub fn decoded_entries_to_certificate_events(
 }
 
 fn decode_entry(reader: &mut BinaryReader<'_>, index: u64) -> Result<StaticCtDecodedEntry> {
+    let timestamped_entry_start = reader.position();
     let timestamp_millis = reader.read_u64()?;
     let entry_type = reader.read_u16()?;
 
     match entry_type {
-        0 => decode_x509_entry(reader, index, timestamp_millis),
-        1 => decode_precertificate_entry(reader, index, timestamp_millis),
+        0 => decode_x509_entry(reader, index, timestamp_millis, timestamped_entry_start),
+        1 => decode_precertificate_entry(reader, index, timestamp_millis, timestamped_entry_start),
         value => Err(CerberusError::CtSource(format!(
             "unsupported Static CT entry type {value} at log index {index}"
         ))),
@@ -129,15 +211,18 @@ fn decode_x509_entry(
     reader: &mut BinaryReader<'_>,
     index: u64,
     timestamp_millis: u64,
+    timestamped_entry_start: usize,
 ) -> Result<StaticCtDecodedEntry> {
     let certificate_der = reader.read_vec_u24()?;
     let extensions = reader.read_vec_u16()?;
+    let merkle_leaf_hash = reader.leaf_hash_from(timestamped_entry_start)?;
     let certificate_chain_fingerprints = reader.read_fingerprints()?;
 
     Ok(StaticCtDecodedEntry {
         index,
         timestamp_millis,
         kind: StaticCtDecodedEntryKind::X509,
+        merkle_leaf_hash: hex::encode(merkle_leaf_hash),
         certificate_der,
         certificate_chain_fingerprints,
         extensions_len: extensions.len(),
@@ -148,10 +233,12 @@ fn decode_precertificate_entry(
     reader: &mut BinaryReader<'_>,
     index: u64,
     timestamp_millis: u64,
+    timestamped_entry_start: usize,
 ) -> Result<StaticCtDecodedEntry> {
     reader.read_exact(32)?;
     reader.read_vec_u24()?;
     let extensions = reader.read_vec_u16()?;
+    let merkle_leaf_hash = reader.leaf_hash_from(timestamped_entry_start)?;
     let certificate_der = reader.read_vec_u24()?;
     let certificate_chain_fingerprints = reader.read_fingerprints()?;
 
@@ -159,6 +246,7 @@ fn decode_precertificate_entry(
         index,
         timestamp_millis,
         kind: StaticCtDecodedEntryKind::Precertificate,
+        merkle_leaf_hash: hex::encode(merkle_leaf_hash),
         certificate_der,
         certificate_chain_fingerprints,
         extensions_len: extensions.len(),
@@ -177,6 +265,18 @@ impl<'a> BinaryReader<'a> {
 
     fn is_empty(&self) -> bool {
         self.position >= self.input.len()
+    }
+
+    fn position(&self) -> usize {
+        self.position
+    }
+
+    fn leaf_hash_from(&self, start: usize) -> Result<MerkleHash> {
+        let timestamped_entry = self.input.get(start..self.position).ok_or_else(|| {
+            CerberusError::CtSource("Static CT timestamped entry range is invalid".to_string())
+        })?;
+
+        Ok(leaf_hash(timestamped_entry))
     }
 
     fn read_exact(&mut self, len: usize) -> Result<&'a [u8]> {
@@ -251,6 +351,24 @@ fn hex_encode(input: &[u8]) -> String {
     }
 
     output
+}
+
+fn timestamp_millis_to_rfc3339(timestamp_millis: u64) -> String {
+    let seconds = timestamp_millis / 1000;
+    let Ok(seconds) = i64::try_from(seconds) else {
+        return "1970-01-01T00:00:00Z".to_string();
+    };
+
+    let nanos = ((timestamp_millis % 1000) * 1_000_000) as u32;
+    let Ok(time) = OffsetDateTime::from_unix_timestamp(seconds) else {
+        return "1970-01-01T00:00:00Z".to_string();
+    };
+    let Ok(time) = time.replace_nanosecond(nanos) else {
+        return "1970-01-01T00:00:00Z".to_string();
+    };
+
+    time.format(&Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
 }
 
 #[cfg(test)]

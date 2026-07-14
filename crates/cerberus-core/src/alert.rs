@@ -44,7 +44,7 @@ impl DomainAlert {
             max_severity = max_severity.max(finding.severity);
         }
 
-        let score = calculate_combined_score(max_score, detectors.len(), reasons.len());
+        let score = calculate_combined_score(max_score, detectors.len());
         let severity = severity_from_score(score).max(max_severity);
 
         Some(Self {
@@ -78,14 +78,11 @@ pub fn group_findings_by_domain(findings: Vec<Finding>) -> Vec<DomainAlert> {
     alerts
 }
 
-fn calculate_combined_score(max_score: u8, detector_count: usize, reason_count: usize) -> u8 {
-    let detector_bonus = detector_count.saturating_sub(1) as u8 * 10;
-    let reason_bonus = reason_count.saturating_sub(1) as u8 * 2;
+fn calculate_combined_score(max_score: u8, detector_count: usize) -> u8 {
+    let detector_bonus = detector_count.saturating_sub(1) as u16 * 10;
+    let raw_score = u16::from(max_score).saturating_add(detector_bonus);
 
-    max_score
-        .saturating_add(detector_bonus)
-        .saturating_add(reason_bonus)
-        .min(100)
+    raw_score.min(100) as u8
 }
 
 fn push_unique<T>(items: &mut Vec<T>, value: T)

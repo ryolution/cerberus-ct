@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow};
 use cerberus_core::{
     DetectionEngine, DomainAlert, Finding, StaticCtClient, StaticCtTileMetadata, StaticCtTilePath,
     decode_static_ct_data_tile, decoded_entries_to_certificate_events, group_findings_by_domain,
-    latest_data_tile_for_size,
+    latest_data_tile_for_size, verify_entries_against_level_zero_hashes,
 };
 use serde::Serialize;
 
@@ -53,12 +53,27 @@ pub async fn run(args: ScanCtArgs) -> Result<()> {
 
     let mut config = load_config(args.config.as_deref())?;
     apply_rule_overrides(&mut config, args.min_score, &args.allowlist_suffixes);
-    let client = StaticCtClient::new(args.url.clone());
-    let path = build_data_tile_path(&args, &client).await?;
+    let webhook_url = args
+        .webhook_url
+        .as_deref()
+        .or(config.outputs.webhook_url.as_deref());
+    let webhook_signing_secret = config.outputs.webhook_signing_secret.as_deref();
+    let slack_webhook_url = config.outputs.slack_webhook_url.as_deref();
+    let trusted_log = config
+        .trusted_log_for_url(&args.url)?
+        .ok_or_else(|| anyhow!("scan-ct requires a matching ct.trusted_logs entry"))?;
+    let client = StaticCtClient::with_trusted_log(trusted_log)?;
+    let checkpoint = client.fetch_checkpoint().await?;
+    client.verify_checkpoint_tree(&checkpoint).await?;
+    let path = build_data_tile_path(&args, checkpoint.size)?;
     let source_log = client.monitoring_base_url();
     let tile = client.fetch_tile(path).await?;
     let metadata = tile.metadata()?;
     let entries = decode_static_ct_data_tile(&tile)?;
+    let level_zero_hashes = client
+        .fetch_level_zero_hashes_for_data_tile(&tile.path, checkpoint.size)
+        .await?;
+    verify_entries_against_level_zero_hashes(&entries, &level_zero_hashes)?;
     let decoded = decoded_entries_to_certificate_events(&entries, source_log);
     let engine = DetectionEngine::default();
     let mut findings = Vec::new();
@@ -85,7 +100,10 @@ pub async fn run(args: ScanCtArgs) -> Result<()> {
 
     if args.grouped {
         let finding_count = findings.len();
-        let alerts = group_findings_by_domain(findings);
+        let alerts = group_findings_by_domain(findings)
+            .into_iter()
+            .filter(|alert| config.should_keep_alert(alert.score))
+            .collect::<Vec<_>>();
         let summary = ScanCtSummary {
             tile: metadata,
             entry_count: decoded.entry_count,
@@ -96,7 +114,8 @@ pub async fn run(args: ScanCtArgs) -> Result<()> {
             message: scan_message(alerts.len(), finding_count),
         };
 
-        webhook::send_alerts(args.webhook_url.as_deref(), &alerts).await?;
+        webhook::send_alerts(webhook_url, webhook_signing_secret, &alerts).await?;
+        webhook::send_alerts_to_slack(slack_webhook_url, &alerts).await?;
 
         tracing::info!(
             entry_count = summary.entry_count,
@@ -113,14 +132,10 @@ pub async fn run(args: ScanCtArgs) -> Result<()> {
                 display::print_alerts_human(&alerts);
             }
             OutputFormat::Json => {
-                if args.summary || alerts.is_empty() {
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&ScanCtAlertReport { summary, alerts })?
-                    );
-                } else {
-                    println!("{}", serde_json::to_string_pretty(&alerts)?);
-                }
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&ScanCtAlertReport { summary, alerts })?
+                );
             }
         }
     } else {
@@ -134,7 +149,8 @@ pub async fn run(args: ScanCtArgs) -> Result<()> {
             message: scan_message(0, findings.len()),
         };
 
-        webhook::send_findings(args.webhook_url.as_deref(), &findings).await?;
+        webhook::send_findings(webhook_url, webhook_signing_secret, &findings).await?;
+        webhook::send_findings_to_slack(slack_webhook_url, &findings).await?;
 
         tracing::info!(
             entry_count = summary.entry_count,
@@ -150,14 +166,10 @@ pub async fn run(args: ScanCtArgs) -> Result<()> {
                 display::print_findings_human(&findings);
             }
             OutputFormat::Json => {
-                if args.summary || findings.is_empty() {
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&ScanCtFindingReport { summary, findings })?
-                    );
-                } else {
-                    println!("{}", serde_json::to_string_pretty(&findings)?);
-                }
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&ScanCtFindingReport { summary, findings })?
+                );
             }
         }
     }
@@ -165,10 +177,7 @@ pub async fn run(args: ScanCtArgs) -> Result<()> {
     Ok(())
 }
 
-async fn build_data_tile_path(
-    args: &ScanCtArgs,
-    client: &StaticCtClient,
-) -> Result<StaticCtTilePath> {
+fn build_data_tile_path(args: &ScanCtArgs, checkpoint_size: u64) -> Result<StaticCtTilePath> {
     let selector_count = usize::from(args.index.is_some())
         + usize::from(args.latest_size.is_some())
         + usize::from(args.latest);
@@ -188,19 +197,32 @@ async fn build_data_tile_path(
             return Err(anyhow!("--latest-size cannot be combined with --width"));
         }
 
+        if tree_size != checkpoint_size {
+            return Err(anyhow!(
+                "--latest-size must match the verified checkpoint size ({checkpoint_size})"
+            ));
+        }
+
         return latest_data_tile_for_size(tree_size)?
             .ok_or_else(|| anyhow!("tree size does not contain a data tile"));
     }
 
     if args.latest || selector_count == 0 {
-        let checkpoint = client.fetch_checkpoint().await?;
-        return latest_data_tile_for_size(checkpoint.size)?
+        return latest_data_tile_for_size(checkpoint_size)?
             .ok_or_else(|| anyhow!("checkpoint tree size does not contain a data tile"));
     }
 
     let index = args
         .index
         .ok_or_else(|| anyhow!("--index is required when using --width"))?;
+
+    let first_entry = index.saturating_mul(256);
+    if first_entry >= checkpoint_size {
+        return Err(anyhow!(
+            "--index {index} starts beyond the verified checkpoint size {checkpoint_size}"
+        ));
+    }
+
     Ok(StaticCtTilePath::data(index, args.width)?)
 }
 

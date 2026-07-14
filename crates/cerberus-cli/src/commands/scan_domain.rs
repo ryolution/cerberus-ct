@@ -42,8 +42,18 @@ pub async fn run(args: ScanDomainArgs) -> Result<()> {
         "running scan-domain command"
     );
 
+    if args.domains.is_empty() {
+        return Err(anyhow::anyhow!("scan-domain requires at least one domain"));
+    }
+
     let mut config = load_config(args.config.as_deref())?;
     apply_rule_overrides(&mut config, args.min_score, &args.allowlist_suffix);
+    let webhook_url = args
+        .webhook_url
+        .as_deref()
+        .or(config.outputs.webhook_url.as_deref());
+    let webhook_signing_secret = config.outputs.webhook_signing_secret.as_deref();
+    let slack_webhook_url = config.outputs.slack_webhook_url.as_deref();
 
     let engine = DetectionEngine::default();
     let domain_count = args.domains.len();
@@ -70,52 +80,52 @@ pub async fn run(args: ScanDomainArgs) -> Result<()> {
     .await?;
 
     if args.grouped {
-        let alerts = group_findings_by_domain(all_findings);
-        webhook::send_alerts(args.webhook_url.as_deref(), &alerts).await?;
+        let alerts = group_findings_by_domain(all_findings)
+            .into_iter()
+            .filter(|alert| config.should_keep_alert(alert.score))
+            .collect::<Vec<_>>();
+        webhook::send_alerts(webhook_url, webhook_signing_secret, &alerts).await?;
+        webhook::send_alerts_to_slack(slack_webhook_url, &alerts).await?;
 
         tracing::info!(alert_count = alerts.len(), "grouped scan completed");
 
-        if args.summary && matches!(args.format, OutputFormat::Json) {
-            let finding_count = alerts.iter().map(|alert| alert.findings.len()).sum();
+        match args.format {
+            OutputFormat::Human => display::print_alerts_human(&alerts),
+            OutputFormat::Json => {
+                let finding_count = alerts.iter().map(|alert| alert.findings.len()).sum();
+                let report = ScanDomainAlertReport {
+                    summary: ScanDomainSummary {
+                        domain_count,
+                        finding_count,
+                        alert_count: alerts.len(),
+                        message: summary_message(alerts.len(), true),
+                    },
+                    alerts,
+                };
 
-            let report = ScanDomainAlertReport {
-                summary: ScanDomainSummary {
-                    domain_count,
-                    finding_count,
-                    alert_count: alerts.len(),
-                    message: summary_message(alerts.len(), true),
-                },
-                alerts,
-            };
-
-            println!("{}", serde_json::to_string_pretty(&report)?);
-        } else {
-            match args.format {
-                OutputFormat::Human => display::print_alerts_human(&alerts),
-                OutputFormat::Json => display::print_alerts_json(&alerts)?,
+                println!("{}", serde_json::to_string_pretty(&report)?);
             }
         }
     } else {
-        webhook::send_findings(args.webhook_url.as_deref(), &all_findings).await?;
+        webhook::send_findings(webhook_url, webhook_signing_secret, &all_findings).await?;
+        webhook::send_findings_to_slack(slack_webhook_url, &all_findings).await?;
 
         tracing::info!(finding_count = all_findings.len(), "scan completed");
 
-        if args.summary && matches!(args.format, OutputFormat::Json) {
-            let report = ScanDomainFindingReport {
-                summary: ScanDomainSummary {
-                    domain_count,
-                    finding_count: all_findings.len(),
-                    alert_count: 0,
-                    message: summary_message(all_findings.len(), false),
-                },
-                findings: all_findings,
-            };
+        match args.format {
+            OutputFormat::Human => display::print_findings_human(&all_findings),
+            OutputFormat::Json => {
+                let report = ScanDomainFindingReport {
+                    summary: ScanDomainSummary {
+                        domain_count,
+                        finding_count: all_findings.len(),
+                        alert_count: 0,
+                        message: summary_message(all_findings.len(), false),
+                    },
+                    findings: all_findings,
+                };
 
-            println!("{}", serde_json::to_string_pretty(&report)?);
-        } else {
-            match args.format {
-                OutputFormat::Human => display::print_findings_human(&all_findings),
-                OutputFormat::Json => display::print_findings_json(&all_findings)?,
+                println!("{}", serde_json::to_string_pretty(&report)?);
             }
         }
     }

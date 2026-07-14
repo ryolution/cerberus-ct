@@ -1,9 +1,0 @@
-{
-  "log_url": "https://mon.sycamore.ct.letsencrypt.org/2026h1",
-  "last_checkpoint_size": 916973283,
-  "last_scanned_tile_index": 0,
-  "last_scanned_entry_index": 255,
-  "alerted_domains": [
-    "support.console.aws.amazon.com"
-  ]
-}

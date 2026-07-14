@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::dns::fingerprints::TakeoverFingerprint;
-use crate::dns::resolver::DnsEnrichment;
+use crate::dns::resolver::{DnsEnrichment, ResolutionStatus};
 use crate::finding::{Finding, Severity};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -26,7 +26,12 @@ pub fn detect_takeover_candidates(
     enrichment: &DnsEnrichment,
     fingerprints: &[TakeoverFingerprint],
 ) -> Vec<TakeoverCandidate> {
-    if enrichment.resolved {
+    if enrichment.resolved
+        || !matches!(
+            enrichment.status,
+            ResolutionStatus::NxDomain | ResolutionStatus::NoData
+        )
+    {
         return Vec::new();
     }
 
@@ -72,7 +77,7 @@ pub fn takeover_findings_from_enrichment(
 }
 
 fn takeover_candidate_to_finding(candidate: TakeoverCandidate) -> Finding {
-    let mut finding = Finding::new(candidate.domain, "takeover", Severity::High, 78)
+    let mut finding = Finding::new(candidate.domain, "takeover", Severity::High, 70)
         .with_reason(candidate.reason)
         .with_evidence("takeover.status", "candidate")
         .with_evidence("takeover.provider", candidate.provider)
@@ -109,6 +114,7 @@ mod tests {
         let enrichment = DnsEnrichment {
             domain: "docs.example.com".to_string(),
             resolved: false,
+            status: ResolutionStatus::NxDomain,
             ips: Vec::new(),
             cname_chain: vec!["old-project.herokuapp.com".to_string()],
             errors: Vec::new(),
@@ -126,6 +132,7 @@ mod tests {
         let enrichment = DnsEnrichment {
             domain: "docs.example.com".to_string(),
             resolved: false,
+            status: ResolutionStatus::NxDomain,
             ips: Vec::new(),
             cname_chain: vec!["user.github.io".to_string()],
             errors: Vec::new(),
@@ -149,9 +156,26 @@ mod tests {
         let enrichment = DnsEnrichment {
             domain: "r.bing.com".to_string(),
             resolved: true,
+            status: ResolutionStatus::Resolved,
             ips: vec!["192.0.2.10".to_string()],
             cname_chain: vec!["p-static.bing.trafficmanager.net".to_string()],
             errors: Vec::new(),
+        };
+
+        let candidates = detect_takeover_candidates(&enrichment, &default_takeover_fingerprints());
+
+        assert!(candidates.is_empty());
+    }
+
+    #[test]
+    fn does_not_create_takeover_candidate_on_timeout() {
+        let enrichment = DnsEnrichment {
+            domain: "docs.example.com".to_string(),
+            resolved: false,
+            status: ResolutionStatus::Timeout,
+            ips: Vec::new(),
+            cname_chain: vec!["old-project.herokuapp.com".to_string()],
+            errors: vec!["timeout".to_string()],
         };
 
         let candidates = detect_takeover_candidates(&enrichment, &default_takeover_fingerprints());

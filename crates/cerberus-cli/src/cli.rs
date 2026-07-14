@@ -16,6 +16,9 @@ pub enum Commands {
 
     ValidateConfig(ValidateConfigArgs),
 
+    DemoWatch(WatchArgs),
+
+    #[command(hide = true)]
     Watch(WatchArgs),
 
     FetchCheckpoint(FetchCheckpointArgs),

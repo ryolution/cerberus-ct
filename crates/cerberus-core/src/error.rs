@@ -38,5 +38,5 @@ pub enum CerberusError {
     Json(#[from] serde_json::Error),
 
     #[error("YAML serialization error: {0}")]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] yaml_serde::Error),
 }

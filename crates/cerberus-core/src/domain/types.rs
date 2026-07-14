@@ -37,13 +37,15 @@ impl DomainName {
         self.normalized.split('.')
     }
 
+    pub fn registrable_domain(&self) -> &str {
+        psl::domain_str(&self.normalized).unwrap_or(self.normalized.as_str())
+    }
+
     pub fn registrable_label_guess(&self) -> &str {
-        let labels: Vec<&str> = self.normalized.split('.').collect();
-        if labels.len() >= 2 {
-            labels[labels.len() - 2]
-        } else {
-            self.normalized.as_str()
-        }
+        self.registrable_domain()
+            .split('.')
+            .next()
+            .unwrap_or(self.normalized.as_str())
     }
 }
 
@@ -66,5 +68,18 @@ impl TryFrom<String> for DomainName {
 impl fmt::Display for DomainName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.normalized)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DomainName;
+
+    #[test]
+    fn extracts_registrable_domain_with_public_suffix_list() {
+        let domain = DomainName::parse("secure.example.co.uk").unwrap();
+
+        assert_eq!(domain.registrable_domain(), "example.co.uk");
+        assert_eq!(domain.registrable_label_guess(), "example");
     }
 }

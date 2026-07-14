@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::ScanDomain(args) => commands::scan_domain::run(args).await,
         Commands::ValidateConfig(args) => commands::validate_config::run(args).await,
-        Commands::Watch(args) => commands::watch::run(args).await,
+        Commands::DemoWatch(args) | Commands::Watch(args) => commands::watch::run(args).await,
         Commands::FetchCheckpoint(args) => commands::fetch_checkpoint::run(args).await,
         Commands::FetchTile(args) => commands::fetch_tile::run(args).await,
         Commands::FetchEvents(args) => commands::fetch_events::run(args).await,

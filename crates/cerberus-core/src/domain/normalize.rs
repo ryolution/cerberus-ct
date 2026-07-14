@@ -1,7 +1,7 @@
 use crate::error::{CerberusError, Result};
 
 pub fn normalize_domain(input: &str) -> Result<String> {
-    let mut domain = input.trim().to_lowercase();
+    let mut domain = input.trim().trim_end_matches('.').to_string();
 
     if domain.is_empty() {
         return Err(CerberusError::DomainNormalization(
@@ -11,11 +11,16 @@ pub fn normalize_domain(input: &str) -> Result<String> {
 
     if domain.starts_with("*.") {
         domain = domain.trim_start_matches("*.").to_string();
+    } else if domain.contains('*') {
+        return Err(CerberusError::DomainNormalization(format!(
+            "domain contains an embedded wildcard: {domain}"
+        )));
     }
 
-    while domain.ends_with('.') {
-        domain.pop();
-    }
+    let domain = idna::domain_to_ascii(&domain).map_err(|error| {
+        CerberusError::DomainNormalization(format!("domain is not valid IDNA: {error:?}"))
+    })?;
+    let domain = domain.to_ascii_lowercase();
 
     validate_domain_shape(&domain)?;
     Ok(domain)
@@ -74,6 +79,15 @@ fn validate_label(label: &str, domain: &str) -> Result<()> {
         )));
     }
 
+    if !label
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    {
+        return Err(CerberusError::DomainNormalization(format!(
+            "domain label contains invalid DNS characters in: {domain}"
+        )));
+    }
+
     if label.starts_with('-') || label.ends_with('-') {
         return Err(CerberusError::DomainNormalization(format!(
             "domain label starts or ends with hyphen: {domain}"
@@ -103,6 +117,14 @@ mod tests {
     }
 
     #[test]
+    fn converts_idn_to_a_label() {
+        assert_eq!(
+            normalize_domain("bücher.example").unwrap(),
+            "xn--bcher-kva.example"
+        );
+    }
+
+    #[test]
     fn rejects_empty_domain() {
         assert!(normalize_domain("").is_err());
     }
@@ -115,5 +137,10 @@ mod tests {
     #[test]
     fn rejects_empty_label() {
         assert!(normalize_domain("example..com").is_err());
+    }
+
+    #[test]
+    fn rejects_embedded_wildcard() {
+        assert!(normalize_domain("api.*.example.com").is_err());
     }
 }

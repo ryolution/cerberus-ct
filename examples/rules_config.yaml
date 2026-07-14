@@ -29,13 +29,33 @@ allowlist:
   - login.microsoftonline.com
 
 outputs:
-  jsonl: true
   webhook_url: null
+  webhook_signing_secret: null
   slack_webhook_url: null
 
 dns:
   enabled: false
   takeover: false
+  concurrency: 16
+
+ct:
+  trusted_logs:
+    - origin: log.sycamore.ct.letsencrypt.org/2026h2
+      base_url: https://mon.sycamore.ct.letsencrypt.org/2026h2/
+      log_id: bP5QGUOoXqkWvFLRM+TcyR7xQRx9JYQg0XOAnhgY6zo=
+      public_key: |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwR1FtiiMbpvxR+sIeiZ5JSCIDIdT
+        APh7OrpdchcrCcyNVDvNUq358pqJx2qdyrOI+EjGxZ7UiPcN3bL3Q99FqA==
+        -----END PUBLIC KEY-----
+    - origin: log.sycamore.ct.letsencrypt.org/2026h1
+      base_url: https://mon.sycamore.ct.letsencrypt.org/2026h1/
+      log_id: pcl4kl1XRheChw3YiWYLXFVki30AQPLsB2hR0YhpGfc=
+      public_key: |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfEEe0JZknA91/c6eNl1aexgeKzuG
+        QUMvRCXPXg9L227O5I4Pi++Abcpq6qxlVUKPYafAJelAnMfGzv3lHCc8gA==
+        -----END PUBLIC KEY-----
 
 rules:
   min_score: 50

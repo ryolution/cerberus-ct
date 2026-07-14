@@ -15,8 +15,18 @@ pub async fn run(args: WatchArgs) -> Result<()> {
         );
     }
 
+    if args.interval_ms == 0 {
+        bail!("--interval-ms must be greater than zero");
+    }
+
     let mut config = load_config(args.config.as_deref())?;
     apply_rule_overrides(&mut config, args.min_score, &args.allowlist_suffixes);
+    let webhook_url = args
+        .webhook_url
+        .as_deref()
+        .or(config.outputs.webhook_url.as_deref());
+    let webhook_signing_secret = config.outputs.webhook_signing_secret.as_deref();
+    let slack_webhook_url = config.outputs.slack_webhook_url.as_deref();
     let engine = DetectionEngine::default();
     let mut source = MockCtSource::demo()?;
 
@@ -54,15 +64,20 @@ pub async fn run(args: WatchArgs) -> Result<()> {
         .await?;
 
         if args.grouped {
-            let alerts = group_findings_by_domain(findings);
-            webhook::send_alerts(args.webhook_url.as_deref(), &alerts).await?;
+            let alerts = group_findings_by_domain(findings)
+                .into_iter()
+                .filter(|alert| config.should_keep_alert(alert.score))
+                .collect::<Vec<_>>();
+            webhook::send_alerts(webhook_url, webhook_signing_secret, &alerts).await?;
+            webhook::send_alerts_to_slack(slack_webhook_url, &alerts).await?;
             tracing::info!(alert_count = alerts.len(), "grouped watch batch completed");
             match args.format {
                 OutputFormat::Human => display::print_alerts_human(&alerts),
                 OutputFormat::Json => display::print_alerts_json(&alerts)?,
             }
         } else {
-            webhook::send_findings(args.webhook_url.as_deref(), &findings).await?;
+            webhook::send_findings(webhook_url, webhook_signing_secret, &findings).await?;
+            webhook::send_findings_to_slack(slack_webhook_url, &findings).await?;
             tracing::info!(finding_count = findings.len(), "watch batch completed");
             match args.format {
                 OutputFormat::Human => display::print_findings_human(&findings),

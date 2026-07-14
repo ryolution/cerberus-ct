@@ -54,8 +54,9 @@ impl Detector for TyposquatDetector {
                     continue;
                 }
 
-                let distance = levenshtein(candidate_label, official_label);
-                if distance == 0 || distance > self.max_distance {
+                let distance = damerau_levenshtein(candidate_label, official_label);
+                let max_distance = max_distance_for_label(official_label.len(), self.max_distance);
+                if distance == 0 || distance > max_distance {
                     continue;
                 }
 
@@ -72,6 +73,7 @@ impl Detector for TyposquatDetector {
                     .with_evidence("official_domain", official_domain)
                     .with_evidence("suspicious_label", suspicious_label)
                     .with_evidence("candidate_label", candidate_label)
+                    .with_evidence("distance_algorithm", "damerau_levenshtein")
                     .with_evidence("distance", distance.to_string());
 
                 findings.push(finding);
@@ -161,6 +163,57 @@ pub fn levenshtein(a: &str, b: &str) -> usize {
     prev[b_chars.len()]
 }
 
+pub fn damerau_levenshtein(a: &str, b: &str) -> usize {
+    if a == b {
+        return 0;
+    }
+
+    let a_chars: Vec<char> = a.chars().collect();
+    let b_chars: Vec<char> = b.chars().collect();
+    let rows = a_chars.len() + 1;
+    let cols = b_chars.len() + 1;
+    let mut distances = vec![vec![0usize; cols]; rows];
+
+    for (i, row) in distances.iter_mut().enumerate() {
+        row[0] = i;
+    }
+
+    for (j, cell) in distances[0].iter_mut().enumerate() {
+        *cell = j;
+    }
+
+    for i in 1..rows {
+        for j in 1..cols {
+            let cost = usize::from(a_chars[i - 1] != b_chars[j - 1]);
+            let mut distance = (distances[i - 1][j] + 1)
+                .min(distances[i][j - 1] + 1)
+                .min(distances[i - 1][j - 1] + cost);
+
+            if i > 1
+                && j > 1
+                && a_chars[i - 1] == b_chars[j - 2]
+                && a_chars[i - 2] == b_chars[j - 1]
+            {
+                distance = distance.min(distances[i - 2][j - 2] + 1);
+            }
+
+            distances[i][j] = distance;
+        }
+    }
+
+    distances[a_chars.len()][b_chars.len()]
+}
+
+fn max_distance_for_label(label_len: usize, configured_max: usize) -> usize {
+    let length_based = match label_len {
+        0..=4 => 1,
+        5..=10 => 2,
+        _ => 3,
+    };
+
+    configured_max.min(length_based)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,6 +223,11 @@ mod tests {
     fn calculates_levenshtein_distance() {
         assert_eq!(levenshtein("paypal", "paypa1"), 1);
         assert_eq!(levenshtein("github", "githab"), 1);
+    }
+
+    #[test]
+    fn calculates_damerau_transposition_distance() {
+        assert_eq!(damerau_levenshtein("payapl", "paypal"), 1);
     }
 
     #[test]

@@ -51,7 +51,11 @@ impl DetectionEngine {
         let mut findings = Vec::new();
 
         for detector in &self.detectors {
-            findings.extend(detector.detect(observation, &ctx)?);
+            let mut detector_findings = detector.detect(observation, &ctx)?;
+            for finding in &mut detector_findings {
+                attach_observation_metadata(finding, observation);
+            }
+            findings.extend(detector_findings);
         }
 
         let findings = merge_findings(findings)
@@ -88,6 +92,71 @@ impl DetectionEngine {
 
         Ok(findings)
     }
+}
+
+fn attach_observation_metadata(finding: &mut Finding, observation: &DomainObservation) {
+    finding.evidence.push(crate::finding::Evidence {
+        kind: "ct.source_log".to_string(),
+        value: observation.source_log.clone(),
+    });
+
+    if let Some(index) = observation.certificate_index {
+        finding.evidence.push(crate::finding::Evidence {
+            kind: "ct.certificate_index".to_string(),
+            value: index.to_string(),
+        });
+    }
+
+    if let Some(fingerprint) = &observation.certificate_sha256 {
+        finding.evidence.push(crate::finding::Evidence {
+            kind: "ct.certificate_sha256".to_string(),
+            value: fingerprint.clone(),
+        });
+    }
+
+    if let Some(serial) = &observation.serial_number {
+        finding.evidence.push(crate::finding::Evidence {
+            kind: "ct.serial_number".to_string(),
+            value: serial.clone(),
+        });
+    }
+
+    if let Some(issuer) = &observation.issuer {
+        finding.evidence.push(crate::finding::Evidence {
+            kind: "ct.issuer".to_string(),
+            value: issuer.clone(),
+        });
+    }
+
+    if let Some(not_before) = &observation.not_before {
+        finding.evidence.push(crate::finding::Evidence {
+            kind: "ct.not_before".to_string(),
+            value: not_before.clone(),
+        });
+    }
+
+    if let Some(not_after) = &observation.not_after {
+        finding.evidence.push(crate::finding::Evidence {
+            kind: "ct.not_after".to_string(),
+            value: not_after.clone(),
+        });
+    }
+
+    for san in &observation.san_dns_names {
+        finding.evidence.push(crate::finding::Evidence {
+            kind: "ct.san_dns_name".to_string(),
+            value: san.clone(),
+        });
+    }
+
+    finding.evidence.push(crate::finding::Evidence {
+        kind: "ct.observed_at".to_string(),
+        value: observation.observed_at.clone(),
+    });
+    finding.evidence.push(crate::finding::Evidence {
+        kind: "ct.source_type".to_string(),
+        value: observation.source_type.clone(),
+    });
 }
 
 impl Default for DetectionEngine {

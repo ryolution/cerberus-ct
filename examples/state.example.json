@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "log_url": "https://invalid.example/static-ct-log",
+  "last_checkpoint_size": 0,
+  "last_checkpoint_root_hash": null,
+  "last_scanned_tile_index": null,
+  "last_scanned_entry_index": null,
+  "alerted_domains": [],
+  "alerted_events": {},
+  "dead_letter_entries": []
+}
